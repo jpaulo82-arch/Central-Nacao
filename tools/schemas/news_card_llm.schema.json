@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NewsCardLLMFields",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["title", "lede", "stamp", "category", "team_unit"],
+  "properties": {
+    "title": {"type": "string", "minLength": 1},
+    "lede": {"type": "string", "minLength": 1},
+    "stamp": {"type": "string", "enum": ["oficial", "confirmado", "rumor", "opiniao", "meme", "ugc"]},
+    "category": {
+      "type": "string",
+      "enum": ["jogo", "mercado", "lesao", "bastidor", "conselho", "institucional", "historia", "meme", "local", "outro"]
+    },
+    "team_unit": {
+      "type": "string",
+      "enum": ["profissional_m", "profissional_f", "sub20", "base", "basquete", "volei", "olimpicos", "clube"]
+    }
+  }
+}

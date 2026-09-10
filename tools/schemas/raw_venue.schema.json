@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RawInput.Venue",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "venue_id",
+    "name",
+    "type",
+    "city",
+    "state",
+    "address",
+    "geo",
+    "has_screen",
+    "status",
+    "matchday_note"
+  ],
+  "properties": {
+    "venue_id": {"type": "string", "minLength": 1},
+    "name": {"type": "string", "minLength": 1},
+    "type": {"type": "string", "enum": ["bar", "loja", "embaixada", "caravana", "telão"]},
+    "city": {"type": "string", "minLength": 1},
+    "state": {"type": "string", "minLength": 1},
+    "address": {"type": "string"},
+    "geo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lat", "lng"],
+      "properties": {
+        "lat": {"type": ["number", "null"]},
+        "lng": {"type": ["number", "null"]}
+      }
+    },
+    "has_screen": {"type": "boolean"},
+    "status": {"type": "string", "enum": ["pending", "verified", "rejected", "closed"]},
+    "matchday_note": {"type": "string"}
+  }
+}

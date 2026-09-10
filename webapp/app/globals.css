@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 7%;
+    --foreground: 0 0% 96%;
+
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 96%;
+
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 96%;
+
+    --primary: 356 78% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 90%;
+
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 55%;
+
+    --accent: 356 78% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 10%;
+
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 356 78% 50%;
+
+    --radius: 0.625rem;
+    --radius-sm: calc(0.625rem - 4px);
+    --radius-lg: calc(0.625rem + 4px);
+    --radius-full: 9999px;
+
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    --spacing-2xl: 48px;
+    --spacing-3xl: 64px;
+
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.2);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+
+    --duration-fast: 150ms;
+    --duration-normal: 250ms;
+    --duration-slow: 350ms;
+
+    --chart-1: 356 78% 50%;
+    --chart-2: 120 50% 45%;
+    --chart-3: 220 70% 55%;
+    --chart-4: 45 85% 55%;
+    --chart-5: 280 60% 55%;
+
+    /* Selos de tipo */
+    --selo-oficial: 142 71% 45%;
+    --selo-confirmado: 217 91% 60%;
+    --selo-rumor: 45 93% 47%;
+    --selo-opiniao: 262 83% 58%;
+    --selo-meme: 330 81% 60%;
+    --selo-ugc: 25 95% 53%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  .selo-oficial { background-color: hsl(var(--selo-oficial)); color: white; }
+  .selo-confirmado { background-color: hsl(var(--selo-confirmado)); color: white; }
+  .selo-rumor { background-color: hsl(var(--selo-rumor)); color: black; }
+  .selo-opiniao { background-color: hsl(var(--selo-opiniao)); color: white; }
+  .selo-meme { background-color: hsl(var(--selo-meme)); color: white; }
+  .selo-ugc { background-color: hsl(var(--selo-ugc)); color: white; }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: hsl(0 0% 10%);
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(0 0% 25%);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(0 0% 35%);
+}
+
+/* Ad placeholder dashes */
+.ad-placeholder {
+  border: 2px dashed hsl(0 0% 30%);
+  background: hsl(0 0% 8%);
+}

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RawInput.Match",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "match_id",
+    "competition",
+    "kickoff_iso",
+    "home",
+    "away",
+    "venue",
+    "status",
+    "score_home",
+    "score_away",
+    "lineup_confirmed",
+    "broadcast"
+  ],
+  "properties": {
+    "match_id": {"type": "string", "minLength": 1},
+    "competition": {"type": "string", "minLength": 1},
+    "kickoff_iso": {"type": "string", "format": "date-time"},
+    "home": {"type": "string", "minLength": 1},
+    "away": {"type": "string", "minLength": 1},
+    "venue": {"type": "string"},
+    "status": {"type": "string", "enum": ["scheduled", "live", "finished"]},
+    "score_home": {"type": ["integer", "null"]},
+    "score_away": {"type": ["integer", "null"]},
+    "lineup_confirmed": {"type": "boolean"},
+    "broadcast": {"type": "array", "items": {"type": "string"}}
+  }
+}

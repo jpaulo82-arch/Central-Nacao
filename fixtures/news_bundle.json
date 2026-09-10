@@ -1,0 +1,74 @@
+[
+  {
+    "source_id": "flamengo_oficial",
+    "source_name": "Flamengo (site oficial)",
+    "url": "https://www.flamengo.com.br/noticias/futebol/fla-flu-ingressos-maracana",
+    "title_raw": "Flamengo abre venda de ingressos para o clássico contra o Fluminense no Maracanã",
+    "summary_raw": "O Clube de Regatas do Flamengo inicia nesta quinta a venda de ingressos para o Fla-Flu, válido pela 24ª rodada do Brasileirão, no Maracanã. Sócios-torcedores têm prioridade na primeira fase de vendas.",
+    "published_at": "2026-09-09T07:02:00-03:00",
+    "fetched_at": "2026-09-09T09:02:00-03:00"
+  },
+  {
+    "source_id": "colunadofla",
+    "source_name": "Coluna do Fla",
+    "url": "https://colunadofla.com/2026/09/flamengo-sonda-volante-uruguaio-para-2027/",
+    "title_raw": "Flamengo sonda volante uruguaio e abre conversas por 'plano B' para 2027",
+    "summary_raw": "De acordo com a reportagem, o Flamengo sonda um volante uruguaio de 24 anos e iniciou conversas iniciais com os representantes do atleta. Não há proposta oficial nem confirmação de outras fontes até o momento.",
+    "published_at": "2026-09-09T07:05:00-03:00",
+    "fetched_at": "2026-09-09T09:05:00-03:00"
+  },
+  {
+    "source_id": "ge_flamengo",
+    "source_name": "ge Flamengo",
+    "url": "https://ge.globo.com/futebol/times/flamengo/noticia/flamengo-encaminha-renovacao-com-fabricio-bruno-ate-2028.ghtml",
+    "title_raw": "Flamengo encaminha renovação de contrato com Fabrício Bruno até 2028",
+    "summary_raw": "O Flamengo encaminhou a renovação de contrato com o zagueiro Fabrício Bruno até o fim de 2028. As partes ajustam os últimos detalhes do vínculo antes da assinatura.",
+    "published_at": "2026-09-09T07:08:00-03:00",
+    "fetched_at": "2026-09-09T09:08:00-03:00"
+  },
+  {
+    "source_id": "lance_flamengo",
+    "source_name": "Lance! Flamengo",
+    "url": "https://www.lance.com.br/flamengo/flamengo-encaminha-renovacao-com-fabricio-bruno-ate-2028.html",
+    "title_raw": "Flamengo encaminha renovação de contrato com Fabrício Bruno até 2028, diz jornal",
+    "summary_raw": "Segundo apuração, o Flamengo encaminhou a renovação com Fabrício Bruno até 2028 e a assinatura do novo contrato deve ser oficializada ainda nesta semana.",
+    "published_at": "2026-09-09T07:15:00-03:00",
+    "fetched_at": "2026-09-09T09:15:00-03:00"
+  },
+  {
+    "source_id": "ge_flamengo",
+    "source_name": "ge Flamengo",
+    "url": "https://ge.globo.com/futebol/times/flamengo/noticia/flamengo-encerra-preparacao-para-o-fla-flu-com-desfalques.ghtml",
+    "title_raw": "Com desfalques no meio-campo, Flamengo encerra preparação para o Fla-Flu",
+    "summary_raw": "O Flamengo fez nesta manhã o último treino antes do clássico contra o Fluminense. O técnico ainda não confirmou a escalação e deve definir os substitutos dos desfalques do meio-campo em cima da hora.",
+    "published_at": "2026-09-09T07:20:00-03:00",
+    "fetched_at": "2026-09-09T09:20:00-03:00"
+  },
+  {
+    "source_id": "uol_flamengo",
+    "source_name": "UOL Esporte",
+    "url": "https://www.uol.com.br/esporte/futebol/ultimas-noticias/2026/09/09/diretoria-flamengo-janela-2027.htm",
+    "title_raw": "Diretoria do Flamengo se reúne para planejar a janela de 2027; prioridade é o ataque",
+    "summary_raw": "A diretoria de futebol do Flamengo terá reunião nesta semana para definir prioridades da janela de 2027. A reposição no setor ofensivo é o principal tema da pauta.",
+    "published_at": "2026-09-09T07:25:00-03:00",
+    "fetched_at": "2026-09-09T09:25:00-03:00"
+  },
+  {
+    "source_id": "fla10",
+    "source_name": "Fla10",
+    "url": "https://fla10.news/fla-flu-ingressos-setor-norte-esgotado/",
+    "title_raw": "Ingressos do Fla-Flu: setor norte do Maracanã esgota em 40 minutos",
+    "summary_raw": "A venda de ingressos para o Fla-Flu começou e o setor norte do Maracanã já está esgotado. Demais setores seguem disponíveis para os sócios-torcedores nesta primeira fase.",
+    "published_at": "2026-09-09T07:30:00-03:00",
+    "fetched_at": "2026-09-09T09:30:00-03:00"
+  },
+  {
+    "source_id": "cnn_flamengo",
+    "source_name": "CNN Brasil Esportes",
+    "url": "https://www.cnnbrasil.com.br/esportes/fla-flu-maracana-transito-scheme/",
+    "title_raw": "Fla-Flu no Maracanã: trânsito terá esquema especial no entorno do estádio no domingo",
+    "summary_raw": "A prefeitura do Rio montou um esquema especial de trânsito para o clássico de domingo no Maracanã. Agentes vão orientar motoristas e torcedores no entorno do estádio a partir das 12h.",
+    "published_at": "2026-09-09T07:35:00-03:00",
+    "fetched_at": "2026-09-09T09:35:00-03:00"
+  }
+]

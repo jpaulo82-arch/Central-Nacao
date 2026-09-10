@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RawInput.NewsItem",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "source_id",
+    "source_name",
+    "url",
+    "title_raw",
+    "summary_raw",
+    "published_at",
+    "fetched_at"
+  ],
+  "properties": {
+    "source_id": {"type": "string", "minLength": 1},
+    "source_name": {"type": "string", "minLength": 1},
+    "url": {"type": "string", "minLength": 1},
+    "title_raw": {"type": "string", "minLength": 1},
+    "summary_raw": {"type": "string"},
+    "published_at": {"type": "string", "format": "date-time"},
+    "fetched_at": {"type": "string", "format": "date-time"}
+  }
+}

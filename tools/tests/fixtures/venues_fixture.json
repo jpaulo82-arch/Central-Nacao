@@ -1,0 +1,50 @@
+[
+  {
+    "venue_id": "rio-bar-rubro",
+    "name": "Bar Rubro",
+    "type": "bar",
+    "city": "Rio de Janeiro",
+    "state": "RJ",
+    "address": "Rua A, 10",
+    "geo": {"lat": -22.9, "lng": -43.2},
+    "has_screen": true,
+    "status": "verified",
+    "matchday_note": "Telão externo"
+  },
+  {
+    "venue_id": "sp-loja-nacao",
+    "name": "Loja da Nação SP",
+    "type": "loja",
+    "city": "São Paulo",
+    "state": "SP",
+    "address": "Av. B, 200",
+    "geo": {"lat": null, "lng": null},
+    "has_screen": false,
+    "status": "verified",
+    "matchday_note": ""
+  },
+  {
+    "venue_id": "bh-embaixada",
+    "name": "Embaixada BH",
+    "type": "embaixada",
+    "city": "Belo Horizonte",
+    "state": "MG",
+    "address": "Praça C, 30",
+    "geo": {"lat": null, "lng": null},
+    "has_screen": true,
+    "status": "pending",
+    "matchday_note": "Aguardando validação"
+  },
+  {
+    "venue_id": "rio-fechado",
+    "name": "Bar Antigo",
+    "type": "bar",
+    "city": "Rio de Janeiro",
+    "state": "RJ",
+    "address": "Rua D, 55",
+    "geo": {"lat": null, "lng": null},
+    "has_screen": false,
+    "status": "closed",
+    "matchday_note": ""
+  }
+]
