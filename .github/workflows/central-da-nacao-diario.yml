@@ -1,0 +1,438 @@
+# ============================================================================
+# Central da Nação — Automações diárias (GitHub Actions)
+# Fase: Integração e Finalização | 2026-09-09 | pt-BR
+#
+# Crons do blueprint (Phase 5 — Trigger), timezone America/Sao_Paulo.
+# IMPORTANTE: cron do GitHub Actions é em UTC. BRT = UTC-3 (sem horário de
+# verão desde 2019). Conversões aplicadas abaixo.
+#
+#   Trigger (BRT)          | Cron (UTC)        | Job
+#   Cron daily ingest 06:30| '30 9 * * *'      | ingest
+#   Cron daily build  07:15| '15 10 * * *'     | build
+#   Cron publish      07:45| '45 10 * * *'     | publish (+ deploy web app se publicado)
+#   Cron refresh 12:00/18:00| '0 15,21 * * *'  | refresh
+#   Venue weekly seg 10:00 | '0 13 * * 1'      | venues
+#   Matchday poll          | ver central-da-nacao-matchday.yml (a cada 5 min)
+#
+# Runners efêmeros: o estado entre triggers trafega por ARTEFATOS do run
+# anterior (cdn-ingest-<data> → cdn-built-<data>) com fallback no Supabase
+# (state_bridge.py). A verdade final continua na nuvem (daily_payload).
+#
+# Segredos usados (Settings → Secrets and variables → Actions):
+#   SUPABASE_URL, SUPABASE_KEY (service role)  [obrigatórios p/ cloud]
+#   API_FUTEBOL_KEY, LLM_API_KEY, EDITOR_WEBHOOK_URL  [opcionais no MVP]
+# Variáveis: AUTO_PUBLISH (default 'false'), DEFAULT_CITY (default 'Rio de Janeiro')
+# ============================================================================
+name: central-da-nacao-diario
+
+on:
+  schedule:
+    - cron: '30 9 * * *'     # 06:30 BRT — ingest diário
+    - cron: '15 10 * * *'    # 07:15 BRT — build + fila editorial
+    - cron: '45 10 * * *'    # 07:45 BRT — publish (se approved)
+    - cron: '0 15,21 * * *'  # 12:00 e 18:00 BRT — refresh
+    - cron: '0 13 * * 1'     # segunda 10:00 BRT — venues semanal
+  workflow_dispatch:
+    inputs:
+      job:
+        description: 'Job a executar manualmente (útil para o botão do editor)'
+        type: choice
+        default: publish
+        options: ['ingest', 'build', 'publish', 'refresh', 'venues']
+      decision:
+        description: 'Decisão do editor usada quando job=publish (MVP: aprovação manual)'
+        type: choice
+        default: none
+        options: ['approved', 'none']
+
+concurrency:
+  group: cdn-${{ github.event.schedule || 'manual' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write   # upload/download de artefatos de estado
+
+env:
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+  AUTO_PUBLISH: ${{ vars.AUTO_PUBLISH || 'false' }}
+  DEFAULT_CITY: ${{ vars.DEFAULT_CITY || 'Rio de Janeiro' }}
+  # Ferramentas leem .env; ponte lê variáveis de ambiente (definidas acima).
+
+jobs:
+  # --------------------------------------------------------------------------
+  # 06:30 BRT — ingest_news + ingest_match + ingest_venues
+  # --------------------------------------------------------------------------
+  ingest:
+    name: '06:30 BRT — Ingest diário'
+    if: github.event.schedule == '30 9 * * *' || (github.event_name == 'workflow_dispatch' && inputs.job == 'ingest')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: tools/requirements.txt
+      - name: Instalar dependências
+        run: pip install -r tools/requirements.txt
+      - name: Montar .env (sem expor segredos no log)
+        run: |
+          umask 077
+          : > tools/.env
+          printf 'SUPABASE_URL=%s\n' "$SUPABASE_URL" >> tools/.env
+          printf 'SUPABASE_KEY=%s\n' "$SUPABASE_KEY" >> tools/.env
+          printf 'API_FUTEBOL_KEY=%s\n' "${API_FUTEBOL_KEY:-}" >> tools/.env
+          printf 'LLM_API_KEY=%s\n' "${LLM_API_KEY:-}" >> tools/.env
+          printf 'EDITOR_WEBHOOK_URL=%s\n' "${EDITOR_WEBHOOK_URL:-}" >> tools/.env
+          printf 'AUTO_PUBLISH=%s\n' "$AUTO_PUBLISH" >> tools/.env
+          printf 'DEFAULT_CITY=%s\n' "$DEFAULT_CITY" >> tools/.env
+        env:
+          API_FUTEBOL_KEY: ${{ secrets.API_FUTEBOL_KEY }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          EDITOR_WEBHOOK_URL: ${{ secrets.EDITOR_WEBHOOK_URL }}
+      - name: Data-alvo (America/Sao_Paulo)
+        id: date
+        run: echo "sp_date=$(date -u -d '3 hours ago' +%F)" >> "$GITHUB_OUTPUT"
+      - name: ingest_news (allowlist)
+        run: python3 tools/ingest_news.py --date "$SP_DATE"
+        env:
+          SP_DATE: ${{ steps.date.outputs.sp_date }}
+      - name: ingest_match (provedor real ou fixture mock)
+        id: match
+        run: |
+          python3 tools/ingest_match.py --fixture fixtures/match_scheduled.json > /tmp/ingest_match_report.json 2>&1 \
+            || { cat /tmp/ingest_match_report.json; exit 1; }
+          cat /tmp/ingest_match_report.json
+        env:
+          SP_DATE: ${{ steps.date.outputs.sp_date }}
+      - name: Sincronizar match real na nuvem (nunca mock)
+        if: steps.match.outcome == 'success'
+        run: |
+          if grep -q '"mock": false' /tmp/ingest_match_report.json; then
+            MATCH_FILE=$(python3 -c "import json;print(json.load(open('/tmp/ingest_match_report.json'))['output'])")
+            python3 .github/scripts/state_bridge.py push-match --file "$MATCH_FILE"
+          else
+            echo "Provedor ausente/em modo mock — estado NÃO sincronizado (sem inventar dado real)."
+          fi
+      - name: ingest_venues (lê Supabase; sem credenciais segue indisponível)
+        run: python3 tools/ingest_venues.py || true
+      - name: Subir artefato de estado (bancada do dia)
+        uses: actions/upload-artifact@v4
+        with:
+          name: cdn-ingest-${{ steps.date.outputs.sp_date }}
+          path: tools/.tmp/**
+          retention-days: 3
+          if-no-files-found: error
+
+  # --------------------------------------------------------------------------
+  # 07:15 BRT — classify + write_cards + build_daily_payload + send_editor_queue
+  # --------------------------------------------------------------------------
+  build:
+    name: '07:15 BRT — Build + fila editorial'
+    if: github.event.schedule == '15 10 * * *' || (github.event_name == 'workflow_dispatch' && inputs.job == 'build')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: tools/requirements.txt
+      - name: Instalar dependências
+        run: pip install -r tools/requirements.txt
+      - name: Montar .env
+        run: |
+          umask 077
+          : > tools/.env
+          printf 'SUPABASE_URL=%s\n' "$SUPABASE_URL" >> tools/.env
+          printf 'SUPABASE_KEY=%s\n' "$SUPABASE_KEY" >> tools/.env
+          printf 'API_FUTEBOL_KEY=%s\n' "${API_FUTEBOL_KEY:-}" >> tools/.env
+          printf 'LLM_API_KEY=%s\n' "${LLM_API_KEY:-}" >> tools/.env
+          printf 'EDITOR_WEBHOOK_URL=%s\n' "${EDITOR_WEBHOOK_URL:-}" >> tools/.env
+          printf 'AUTO_PUBLISH=%s\n' "$AUTO_PUBLISH" >> tools/.env
+          printf 'DEFAULT_CITY=%s\n' "$DEFAULT_CITY" >> tools/.env
+        env:
+          API_FUTEBOL_KEY: ${{ secrets.API_FUTEBOL_KEY }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          EDITOR_WEBHOOK_URL: ${{ secrets.EDITOR_WEBHOOK_URL }}
+      - name: Data-alvo (America/Sao_Paulo)
+        id: date
+        run: echo "sp_date=$(date -u -d '3 hours ago' +%F)" >> "$GITHUB_OUTPUT"
+      - name: Baixar bancada do ingest de hoje
+        run: |
+          mkdir -p tools/.tmp
+          SP_DATE="$SP_DATE"
+          URL=$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" \
+            --jq "[.artifacts[] | select(.name==\"cdn-ingest-${SP_DATE}\" and .expired==false)] | sort_by(.created_at) | reverse | .[0] | .archive_download_url // empty" 2>/dev/null || true)
+          if [ -n "$URL" ]; then
+            gh api "$URL" > /tmp/cdn-ingest.zip
+            unzip -o -q /tmp/cdn-ingest.zip -d tools/.tmp || true
+            echo "Bancada do ingest baixada (${SP_DATE})."
+          else
+            echo "Sem artefato cdn-ingest-${SP_DATE} — seguindo com lote vazio (seções do payload ficam vazias, nunca omitidas)."
+          fi
+        env:
+          SP_DATE: ${{ steps.date.outputs.sp_date }}
+      - name: Garantir arquivos-base do dia (contrato de seções vazias)
+        run: |
+          mkdir -p tools/.tmp/{news,seen,matches,venues,payload,queue,cards,cards_final}
+          SP_DATE="$SP_DATE"
+          for d in news seen cards cards_final; do
+            f="tools/.tmp/$d/${SP_DATE}.json"
+            [ -f "$f" ] || echo '[]' > "$f"
+          done
+        env:
+          SP_DATE: ${{ steps.date.outputs.sp_date }}
+      - name: classify_and_dedupe
+        run: python3 tools/classify_and_dedupe.py --date "$SP_DATE"
+        env:
+          SP_DATE: ${{ steps.date.outputs.sp_date }}
+      - name: write_cards (valida + grava; upsert na nuvem se houver credenciais)
+        run: python3 tools/write_cards.py --date "$SP_DATE"
+        env:
+          SP_DATE: ${{ steps.date.outputs.sp_date }}
+      - name: build_daily_payload (4 seções obrigatórias)
+        run: python3 tools/build_daily_payload.py --date "$SP_DATE"
+        env:
+          SP_DATE: ${{ steps.date.outputs.sp_date }}
+      - name: send_editor_queue (webhook do editor; dry-run sem webhook)
+        run: |
+          if [ -n "${EDITOR_WEBHOOK_URL:-}" ]; then
+            python3 tools/send_editor_queue.py --payload "tools/.tmp/payload/${SP_DATE}.json" --decision none
+          else
+            echo "EDITOR_WEBHOOK_URL ausente — bloco em dry-run (fila registrada em .tmp/queue)."
+            python3 tools/send_editor_queue.py --payload "tools/.tmp/payload/${SP_DATE}.json" --dry-run --decision none
+          fi
+        env:
+          SP_DATE: ${{ steps.date.outputs.sp_date }}
+          EDITOR_WEBHOOK_URL: ${{ secrets.EDITOR_WEBHOOK_URL }}
+      - name: Gravar rascunho na nuvem (observabilidade + fallback do publish)
+        run: |
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_KEY" ]; then
+            python3 .github/scripts/state_bridge.py push-daily-payload --file "tools/.tmp/payload/${SP_DATE}.json"
+          else
+            echo "Sem credenciais Supabase — rascunho só em artefato."
+          fi
+        env:
+          SP_DATE: ${{ steps.date.outputs.sp_date }}
+      - name: Subir artefato do build (payload + fila)
+        uses: actions/upload-artifact@v4
+        with:
+          name: cdn-built-${{ steps.date.outputs.sp_date }}
+          path: tools/.tmp/**
+          retention-days: 3
+          if-no-files-found: error
+
+  # --------------------------------------------------------------------------
+  # 07:45 BRT — publish_payload (gate: approved via workflow_dispatch ou AUTO_PUBLISH)
+  # --------------------------------------------------------------------------
+  publish:
+    name: '07:45 BRT — Publish (gate editorial)'
+    if: github.event.schedule == '45 10 * * *' || (github.event_name == 'workflow_dispatch' && inputs.job == 'publish')
+    runs-on: ubuntu-latest
+    outputs:
+      published: ${{ steps.run.outputs.published }}
+      status: ${{ steps.run.outputs.status }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: tools/requirements.txt
+      - name: Instalar dependências
+        run: pip install -r tools/requirements.txt
+      - name: Montar .env
+        run: |
+          umask 077
+          : > tools/.env
+          printf 'SUPABASE_URL=%s\n' "$SUPABASE_URL" >> tools/.env
+          printf 'SUPABASE_KEY=%s\n' "$SUPABASE_KEY" >> tools/.env
+          printf 'API_FUTEBOL_KEY=%s\n' "${API_FUTEBOL_KEY:-}" >> tools/.env
+          printf 'LLM_API_KEY=%s\n' "${LLM_API_KEY:-}" >> tools/.env
+          printf 'EDITOR_WEBHOOK_URL=%s\n' "${EDITOR_WEBHOOK_URL:-}" >> tools/.env
+          printf 'AUTO_PUBLISH=%s\n' "$AUTO_PUBLISH" >> tools/.env
+          printf 'DEFAULT_CITY=%s\n' "$DEFAULT_CITY" >> tools/.env
+        env:
+          API_FUTEBOL_KEY: ${{ secrets.API_FUTEBOL_KEY }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          EDITOR_WEBHOOK_URL: ${{ secrets.EDITOR_WEBHOOK_URL }}
+      - name: Data-alvo (America/Sao_Paulo)
+        id: date
+        run: echo "sp_date=$(date -u -d '3 hours ago' +%F)" >> "$GITHUB_OUTPUT"
+      - name: Recuperar payload do build (artefato → fallback Supabase)
+        id: fetch
+        run: |
+          mkdir -p tools/.tmp/payload tools/.tmp/queue
+          SP_DATE="$SP_DATE"
+          URL=$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" \
+            --jq "[.artifacts[] | select(.name==\"cdn-built-${SP_DATE}\" and .expired==false)] | sort_by(.created_at) | reverse | .[0] | .archive_download_url // empty" 2>/dev/null || true)
+          if [ -n "$URL" ]; then
+            gh api "$URL" > /tmp/cdn-built.zip
+            unzip -o -q /tmp/cdn-built.zip -d tools/.tmp || true
+            echo "payload_origin=artifact" >> "$GITHUB_OUTPUT"
+          else
+            echo "Sem artefato cdn-built-${SP_DATE}; tentando rascunho na nuvem..."
+            python3 .github/scripts/state_bridge.py pull-daily-payload --date "$SP_DATE" --out "tools/.tmp/payload/${SP_DATE}.json"
+            echo "payload_origin=supabase" >> "$GITHUB_OUTPUT"
+          fi
+          if [ ! -f "tools/.tmp/payload/${SP_DATE}.json" ]; then
+            echo "Sem payload do dia — nada a publicar (build não concluiu?)."
+          fi
+        env:
+          SP_DATE: ${{ steps.date.outputs.sp_date }}
+      - name: Registrar decisão do editor (somente execução manual)
+        if: github.event_name == 'workflow_dispatch' && inputs.job == 'publish'
+        run: |
+          mkdir -p tools/.tmp/queue
+          printf '{"decision":"%s","decided_at":"%s","editor_notes":[]}\n' \
+            "$DECISION" "$(date -u -d '3 hours ago' +%Y-%m-%dT%H:%M:%S-03:00)" \
+            > "tools/.tmp/queue/${SP_DATE}.json"
+        env:
+          DECISION: ${{ inputs.decision }}
+          SP_DATE: ${{ steps.date.outputs.sp_date }}
+      - name: publish_payload (gate approved ou AUTO_PUBLISH)
+        id: run
+        run: |
+          SP_DATE="$SP_DATE"
+          if [ ! -f "tools/.tmp/payload/${SP_DATE}.json" ]; then
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            echo "status=no_payload" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          python3 tools/publish_payload.py \
+            --payload "tools/.tmp/payload/${SP_DATE}.json" \
+            --queue "tools/.tmp/queue/${SP_DATE}.json" > /tmp/publish_report.json 2>&1 || { cat /tmp/publish_report.json; exit 1; }
+          cat /tmp/publish_report.json
+          PUBLISHED=$(python3 -c "import json;print(json.load(open('/tmp/publish_report.json')).get('published', False))")
+          STATUS=$(python3 -c "import json;print(json.load(open('/tmp/publish_report.json')).get('status',''))")
+          echo "published=$PUBLISHED" >> "$GITHUB_OUTPUT"
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+        env:
+          SP_DATE: ${{ steps.date.outputs.sp_date }}
+      - name: Resumo no job
+        if: always()
+        run: |
+          {
+            echo "## Publish $(date -u -d '3 hours ago' +%F) (BRT)"
+            echo "- published: ${{ steps.run.outputs.published }}"
+            echo "- status: ${{ steps.run.outputs.status }}"
+            echo "- origem do payload: ${{ steps.fetch.outputs.payload_origin }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # --------------------------------------------------------------------------
+  # Deploy da home (GitHub Pages) apenas quando algo foi publicado hoje
+  # --------------------------------------------------------------------------
+  deploy:
+    name: Deploy GitHub Pages (payload publicado)
+    needs: publish
+    if: needs.publish.outputs.published == 'true'
+    uses: ./.github/workflows/central-da-nacao-deploy-webapp.yml
+
+  # --------------------------------------------------------------------------
+  # 12:00 / 18:00 BRT — refresh: ingest + cards novos na fila (nunca publica)
+  # --------------------------------------------------------------------------
+  refresh:
+    name: '12:00/18:00 BRT — Refresh'
+    if: github.event.schedule == '0 15,21 * * *' || (github.event_name == 'workflow_dispatch' && inputs.job == 'refresh')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: tools/requirements.txt
+      - name: Instalar dependências
+        run: pip install -r tools/requirements.txt
+      - name: Montar .env
+        run: |
+          umask 077
+          : > tools/.env
+          printf 'SUPABASE_URL=%s\n' "$SUPABASE_URL" >> tools/.env
+          printf 'SUPABASE_KEY=%s\n' "$SUPABASE_KEY" >> tools/.env
+          printf 'API_FUTEBOL_KEY=%s\n' "${API_FUTEBOL_KEY:-}" >> tools/.env
+          printf 'LLM_API_KEY=%s\n' "${LLM_API_KEY:-}" >> tools/.env
+          printf 'EDITOR_WEBHOOK_URL=%s\n' "${EDITOR_WEBHOOK_URL:-}" >> tools/.env
+          printf 'AUTO_PUBLISH=%s\n' "$AUTO_PUBLISH" >> tools/.env
+          printf 'DEFAULT_CITY=%s\n' "$DEFAULT_CITY" >> tools/.env
+        env:
+          API_FUTEBOL_KEY: ${{ secrets.API_FUTEBOL_KEY }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          EDITOR_WEBHOOK_URL: ${{ secrets.EDITOR_WEBHOOK_URL }}
+      - name: Data-alvo (America/Sao_Paulo)
+        id: date
+        run: echo "sp_date=$(date -u -d '3 hours ago' +%F)" >> "$GITHUB_OUTPUT"
+      - name: ingest_news (apenas itens novos ~24h)
+        id: ingest
+        run: |
+          mkdir -p tools/.tmp/news tools/.tmp/cards tools/.tmp/cards_final tools/.tmp/payload tools/.tmp/queue
+          python3 tools/ingest_news.py --date "$SP_DATE" > /tmp/refresh_ingest.json 2>&1 || { cat /tmp/refresh_ingest.json; exit 1; }
+          cat /tmp/refresh_ingest.json
+          python3 -c "import json;r=json.load(open('/tmp/refresh_ingest.json'));print('new_items='+str(r.get('new_items',0)))" >> "$GITHUB_OUTPUT"
+        env:
+          SP_DATE: ${{ steps.date.outputs.sp_date }}
+      - name: Cards novos na fila (só se houver item novo)
+        if: steps.ingest.outputs.new_items != '0'
+        run: |
+          SP_DATE="$SP_DATE"
+          [ -f "tools/.tmp/news/${SP_DATE}.json" ] || echo '[]' > "tools/.tmp/news/${SP_DATE}.json"
+          python3 tools/classify_and_dedupe.py --date "$SP_DATE"
+          python3 tools/write_cards.py --date "$SP_DATE"
+          python3 tools/build_daily_payload.py --date "$SP_DATE"
+          if [ -n "${EDITOR_WEBHOOK_URL:-}" ]; then
+            python3 tools/send_editor_queue.py --payload "tools/.tmp/payload/${SP_DATE}.json" --decision none
+          else
+            python3 tools/send_editor_queue.py --payload "tools/.tmp/payload/${SP_DATE}.json" --dry-run --decision none
+          fi
+        env:
+          SP_DATE: ${{ steps.date.outputs.sp_date }}
+          EDITOR_WEBHOOK_URL: ${{ secrets.EDITOR_WEBHOOK_URL }}
+      - name: Resumo no job
+        if: always()
+        run: |
+          {
+            echo "## Refresh $(date -u -d '3 hours ago' +%F) (BRT)"
+            echo "- itens novos: ${{ steps.ingest.outputs.new_items }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # --------------------------------------------------------------------------
+  # Segunda 10:00 BRT — venues (ingest_venues lê o Supabase; nada de scraping)
+  # --------------------------------------------------------------------------
+  venues:
+    name: 'Seg 10:00 BRT — Venues'
+    if: github.event.schedule == '0 13 * * 1' || (github.event_name == 'workflow_dispatch' && inputs.job == 'venues')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: tools/requirements.txt
+      - name: Instalar dependências
+        run: pip install -r tools/requirements.txt
+      - name: Montar .env
+        run: |
+          umask 077
+          : > tools/.env
+          printf 'SUPABASE_URL=%s\n' "$SUPABASE_URL" >> tools/.env
+          printf 'SUPABASE_KEY=%s\n' "$SUPABASE_KEY" >> tools/.env
+        env:
+          API_FUTEBOL_KEY: ${{ secrets.API_FUTEBOL_KEY }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          EDITOR_WEBHOOK_URL: ${{ secrets.EDITOR_WEBHOOK_URL }}
+      - name: ingest_venues
+        id: venues
+        run: |
+          python3 tools/ingest_venues.py > /tmp/venues_report.json 2>&1 || { cat /tmp/venues_report.json; exit 1; }
+          cat /tmp/venues_report.json
+          python3 -c "import json; r=json.load(open('/tmp/venues_report.json')); [print(f'city_{k}={v}') for k, v in r.get('verified_by_city', {}).items()]" >> "$GITHUB_OUTPUT"
+      - name: Resumo no job
+        run: |
+          {
+            echo "## Venues semanais $(date -u -d '3 hours ago' +%F)"
+            python3 -c "import json;r=json.load(open('/tmp/venues_report.json'));print('- total:', r.get('total'));print('- pending:', r.get('pending'));print('- por cidade (verified):', r.get('verified_by_city'))"
+          } >> "$GITHUB_STEP_SUMMARY"
