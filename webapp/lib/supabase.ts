@@ -1,7 +1,7 @@
 /**
  * Cliente Supabase (somente leitura).
  * Se NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY não estiverem definidas,
- * o cliente será null e o app usa fixtures de demonstração.
+ * as seções da home ficam vazias com aviso amigável.
  */
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 

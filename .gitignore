@@ -1,0 +1,15 @@
+# Secrets locais
+.env
+.env.*
+!.env.example
+
+# Node/Next
+webapp/.next/
+webapp/out/
+webapp/node_modules/
+webapp/.build/
+*.log
+
+# Python
+__pycache__/
+*.pyc

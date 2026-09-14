@@ -15,7 +15,7 @@ export function Footer() {
           Conteúdo curado pela comunidade rubro-negra.
         </p>
         <p className="text-xs text-muted-foreground/60">
-          © 2026 Central da Nação · Projeto de demonstração
+          © 2026 Central da Nação
         </p>
       </div>
     </footer>

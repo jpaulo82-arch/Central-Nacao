@@ -4,16 +4,14 @@ import { Zap } from 'lucide-react';
 import { SectionWrapper } from './section-wrapper';
 import { NewsCardItem } from './news-card';
 import { MatchCard } from './match-card';
-import { DemoIndicator } from './demo-indicator';
 import type { NewsCard, Match } from '@/lib/types';
 
 interface AgoraSectionProps {
   news: NewsCard[];
   matches: Match[];
-  isDemo: boolean;
 }
 
-export function AgoraSection({ news, matches, isDemo }: AgoraSectionProps) {
+export function AgoraSection({ news, matches }: AgoraSectionProps) {
   const destaques = (news ?? []).filter((n: NewsCard) => n?.destaque);
   const restantes = (news ?? []).filter((n: NewsCard) => !n?.destaque);
   const proximoJogo = (matches ?? []).find(
@@ -26,17 +24,14 @@ export function AgoraSection({ news, matches, isDemo }: AgoraSectionProps) {
       title="Agora"
       subtitle="Notícias quentes e o próximo jogo"
       icon={Zap}
-      rightSlot={<DemoIndicator show={isDemo} />}
     >
       <div className="space-y-6">
-        {/* Match Center */}
         {proximoJogo && (
           <div className="mb-4">
             <MatchCard match={proximoJogo} />
           </div>
         )}
 
-        {/* Destaques */}
         {(destaques?.length ?? 0) > 0 && (
           <div className="grid gap-4 sm:grid-cols-2">
             {destaques.map((card: NewsCard, idx: number) => (
@@ -45,12 +40,19 @@ export function AgoraSection({ news, matches, isDemo }: AgoraSectionProps) {
           </div>
         )}
 
-        {/* Restantes */}
-        <div className="grid gap-3">
-          {(restantes ?? []).map((card: NewsCard, idx: number) => (
-            <NewsCardItem key={card?.id ?? `rest-${idx}`} card={card} />
-          ))}
-        </div>
+        {(restantes?.length ?? 0) > 0 && (
+          <div className="grid gap-3">
+            {(restantes ?? []).map((card: NewsCard, idx: number) => (
+              <NewsCardItem key={card?.id ?? `rest-${idx}`} card={card} />
+            ))}
+          </div>
+        )}
+
+        {(news ?? []).length === 0 && !proximoJogo && (
+          <p className="rounded-lg border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">
+            Ainda não há conteúdo publicado na seção Agora.
+          </p>
+        )}
       </div>
     </SectionWrapper>
   );

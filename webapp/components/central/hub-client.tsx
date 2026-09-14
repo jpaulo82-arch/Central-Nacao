@@ -1,5 +1,6 @@
 'use client';
 
+import { AlertCircle } from 'lucide-react';
 import { HeroBanner } from './hero-banner';
 import { Header } from './header';
 import { Footer } from './footer';
@@ -8,66 +9,65 @@ import { NacaoSection } from './nacao-section';
 import { CortesSection } from './cortes-section';
 import { PertoSection } from './perto-section';
 import { AdPlaceholder } from './ad-placeholder';
-import type { NewsCard, Match, SocialPost, Corte, Venue } from '@/lib/types';
+import type { NewsCard, Match, Corte, Venue } from '@/lib/types';
 
 interface HubClientProps {
   news: NewsCard[];
   matches: Match[];
-  social: SocialPost[];
+  nacaoMatches: Match[];
+  nacaoClassificacao: string | null;
   cortes: Corte[];
   venues: Venue[];
-  newsDemo: boolean;
-  matchesDemo: boolean;
-  socialDemo: boolean;
-  cortesDemo: boolean;
-  venuesDemo: boolean;
+  errors: string[];
 }
 
 export function HubClient({
   news,
   matches,
-  social,
+  nacaoMatches,
+  nacaoClassificacao,
   cortes,
   venues,
-  newsDemo,
-  matchesDemo,
-  socialDemo,
-  cortesDemo,
-  venuesDemo,
+  errors,
 }: HubClientProps) {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header />
       <HeroBanner />
 
-      {/* Leaderboard Ad */}
+      {(errors ?? []).length > 0 && (
+        <div className="mx-auto mt-4 max-w-[1200px] px-4">
+          <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-xs text-yellow-200">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>Algumas seções podem estar vazias agora: {(errors ?? []).join(' ')}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mx-auto max-w-[1200px] px-4 pt-6">
         <AdPlaceholder format="leaderboard" />
       </div>
 
       <div className="mx-auto max-w-[1200px] px-4">
         <div className="flex gap-8">
-          {/* Main content */}
           <main className="flex-1 min-w-0">
-            <AgoraSection news={news ?? []} matches={matches ?? []} isDemo={newsDemo || matchesDemo} />
+            <AgoraSection news={news ?? []} matches={matches ?? []} />
 
-            {/* Ad between sections */}
             <AdPlaceholder format="retangulo" className="my-4" />
 
-            <NacaoSection posts={social ?? []} isDemo={socialDemo} />
+            <NacaoSection matches={nacaoMatches ?? []} classificacaoLabel={nacaoClassificacao} />
 
-            {/* Ad between sections */}
             <AdPlaceholder format="retangulo" className="my-4" />
 
-            <CortesSection cortes={cortes ?? []} isDemo={cortesDemo} />
+            <CortesSection cortes={cortes ?? []} />
 
-            {/* Ad between sections */}
             <AdPlaceholder format="retangulo" className="my-4" />
 
-            <PertoSection venues={venues ?? []} isDemo={venuesDemo} />
+            <PertoSection venues={venues ?? []} />
           </main>
 
-          {/* Desktop sidebar ads */}
           <aside className="hidden lg:block w-[300px] shrink-0 pt-8 space-y-6">
             <div className="sticky top-20 space-y-6">
               <AdPlaceholder format="sidebar" />

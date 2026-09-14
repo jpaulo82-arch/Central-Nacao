@@ -2,29 +2,40 @@
 
 import { Users } from 'lucide-react';
 import { SectionWrapper } from './section-wrapper';
-import { SocialPostCard } from './social-post-card';
-import { DemoIndicator } from './demo-indicator';
-import type { SocialPost } from '@/lib/types';
+import { MatchCard } from './match-card';
+import type { Match } from '@/lib/types';
 
 interface NacaoSectionProps {
-  posts: SocialPost[];
-  isDemo: boolean;
+  matches: Match[];
+  classificacaoLabel: string | null;
 }
 
-export function NacaoSection({ posts, isDemo }: NacaoSectionProps) {
+export function NacaoSection({ matches, classificacaoLabel }: NacaoSectionProps) {
   return (
     <SectionWrapper
       id="nacao"
       title="Nação"
-      subtitle="O pulso das redes — voz da torcida"
+      subtitle="Calendário e momento do time"
       icon={Users}
-      rightSlot={<DemoIndicator show={isDemo} />}
+      rightSlot={
+        classificacaoLabel ? (
+          <span className="rounded-full bg-primary/15 px-3 py-1 text-[11px] font-semibold text-primary">
+            {classificacaoLabel}
+          </span>
+        ) : null
+      }
     >
-      <div className="grid gap-3 sm:grid-cols-2">
-        {(posts ?? []).map((post: SocialPost, idx: number) => (
-          <SocialPostCard key={post?.id ?? `post-${idx}`} post={post} />
-        ))}
-      </div>
+      {(matches ?? []).length > 0 ? (
+        <div className="grid gap-4">
+          {(matches ?? []).map((match: Match, idx: number) => (
+            <MatchCard key={match?.id ?? `nacao-match-${idx}`} match={match} />
+          ))}
+        </div>
+      ) : (
+        <p className="rounded-lg border border-border/60 bg-card/60 p-4 text-sm text-muted-foreground">
+          Ainda não há jogos publicados na seção Nação.
+        </p>
+      )}
     </SectionWrapper>
   );
 }

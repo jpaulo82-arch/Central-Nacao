@@ -1,21 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { MapPin } from 'lucide-react';
 import { SectionWrapper } from './section-wrapper';
 import { VenueCard } from './venue-card';
-import { DemoIndicator } from './demo-indicator';
 import type { Venue } from '@/lib/types';
 
-const CIDADES = ['Rio de Janeiro', 'São Paulo', 'Belo Horizonte', 'Recife', 'Salvador'];
+const CIDADES_PILOTO = ['Rio de Janeiro', 'Brasília'];
 
 interface PertoSectionProps {
   venues: Venue[];
-  isDemo: boolean;
 }
 
-export function PertoSection({ venues, isDemo }: PertoSectionProps) {
-  const [cidade, setCidade] = useState('Rio de Janeiro');
+export function PertoSection({ venues }: PertoSectionProps) {
+  const cidadesDisponiveis = useMemo(() => {
+    const presentes = new Set((venues ?? []).map((v) => v?.cidade).filter(Boolean));
+    return CIDADES_PILOTO.filter((cidade) => presentes.has(cidade));
+  }, [venues]);
+
+  const [cidade, setCidade] = useState(cidadesDisponiveis[0] ?? CIDADES_PILOTO[0]);
+
   const filtered = (venues ?? []).filter((v: Venue) => v?.cidade === cidade);
 
   return (
@@ -24,27 +28,27 @@ export function PertoSection({ venues, isDemo }: PertoSectionProps) {
       title="Perto de Você"
       subtitle="Bares, lojas e embaixadas da Nação"
       icon={MapPin}
-      rightSlot={<DemoIndicator show={isDemo} />}
     >
       <div className="space-y-4">
-        {/* City selector */}
         <div className="flex flex-wrap gap-2">
-          {CIDADES.map((c: string) => (
-            <button
-              key={c}
-              onClick={() => setCidade(c)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                cidade === c
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-              }`}
-            >
-              {c}
-            </button>
-          ))}
+          {CIDADES_PILOTO.map((c: string) => {
+            const hasItems = (venues ?? []).some((v) => v?.cidade === c);
+            return (
+              <button
+                key={c}
+                onClick={() => setCidade(c)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  cidade === c
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                } ${!hasItems ? 'opacity-60' : ''}`}
+              >
+                {c}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Venues */}
         <div className="grid gap-3">
           {filtered.length > 0 ? (
             filtered.map((v: Venue, idx: number) => <VenueCard key={v?.id ?? `venue-${idx}`} venue={v} />)
