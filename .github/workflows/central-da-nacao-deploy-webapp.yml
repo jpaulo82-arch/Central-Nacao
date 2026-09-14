@@ -1,1 +1,134 @@
+# ============================================================================
+# Central da Nação — Deploy da Web App (Next.js) no GitHub Pages
+# Fase: Integração e Finalização | 2026-09-09 | pt-BR
+#
+# Premissas (repo monorepo da Central da Nação):
+#   • A aplicação Next.js vive em `webapp/` e usa a variável NEXT_OUTPUT_MODE=export
+#     para gerar saída estática (GitHub Pages não roda SSR).
+#   • webapp/next.config.js já lê NEXT_OUTPUT_MODE do ambiente (sem alterar o arquivo).
+#   • As diretivas `force-dynamic` em app/page.tsx e app/layout.tsx são incompatíveis
+#     com saída estática — o workflow as remove automaticamente via `sed` antes do build.
+#     Isso é seguro porque no ciclo Pages os dados entram via Supabase na hora do build
+#     (dados frescos = rebuild diário), sem necessidade de SSR por request.
+#   • webapp/package.json tem script `build` (gera webapp/out/ quando NEXT_OUTPUT_MODE=export).
+#   • Variáveis públicas de runtime (Supabase anon key + URL) são injetadas em build-time
+#     como NEXT_PUBLIC_* — o cliente Supabase em lib/supabase.ts as lê automaticamente.
+#   • Sem NEXT_PUBLIC_SUPABASE_URL/ANON_KEY configuradas, o app usa fixtures de demonstração
+#     (fallback já embutido em lib/data.ts) — sem erro, sem tela em branco.
+#
+# Disparos:
+#   1. Automático: fim do publish diário (workflow_call via central-da-nacao-diario.yml).
+#   2. Manual: Actions → central-da-nacao-deploy-webapp → Run workflow.
+#   3. Push em `webapp/**` na branch main (CI contínua).
+#
+# Configuração única no repositório (Settings → Pages):
+#   Source = "GitHub Actions". O environment "github-pages" é criado automaticamente.
+#
+# Secrets necessários (Settings → Secrets and variables → Actions):
+#   NEXT_PUBLIC_SUPABASE_URL      — URL do projeto Supabase (anon/public, seguro no build)
+#   NEXT_PUBLIC_SUPABASE_ANON_KEY — chave anon do Supabase (anon/public, seguro no build)
+#   (sem eles o app funciona com fixtures de demo — bom para o primeiro deploy de testes)
+# ============================================================================
+name: central-da-nacao-deploy-webapp
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['webapp/**']
+
+concurrency:
+  group: cdn-pages
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-deploy:
+    name: Build estático + GitHub Pages
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: webapp/package-lock.json
+
+      - name: Instalar dependências da Web App
+        working-directory: webapp
+        run: npm ci || npm install --no-audit --no-fund
+
+      - name: Calcular basePath (site de projeto vs. site de usuário)
+        id: basepath
+        run: |
+          REPO="${GITHUB_REPOSITORY##*/}"
+          if [[ "$REPO" == *.github.io ]]; then
+            echo "Repositório de usuário/organização — basePath vazio."
+            echo "base_path=" >> "$GITHUB_OUTPUT"
+          else
+            echo "Repositório de projeto — basePath /$REPO"
+            echo "base_path=/$REPO" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Preparar para exportação estática
+        working-directory: webapp
+        run: |
+          # force-dynamic (SSR por request) é incompatível com output:'export' (site estático).
+          # No GitHub Pages, os dados são obtidos do Supabase na hora do BUILD,
+          # garantindo conteúdo fresco via rebuild diário pelo workflow central-da-nacao-diario.
+          # Remover a diretiva deixa o Next.js tratar as páginas como SSG (Static Site Generation).
+          sed -i "s/export const dynamic = 'force-dynamic'[;]*//" app/page.tsx app/layout.tsx
+          echo "force-dynamic removido para build estático:"
+          grep -n "force-dynamic" app/page.tsx app/layout.tsx || echo "  ✓ nenhuma ocorrência restante"
+
+      - name: Build estático (Next.js → webapp/out/)
+        working-directory: webapp
+        env:
+          NEXT_OUTPUT_MODE: export
+          NEXT_PUBLIC_BASE_PATH: ${{ steps.basepath.outputs.base_path }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: npm run build
+
+      - name: Conferir diretório de exportação
+        run: |
+          if [ ! -d webapp/out ]; then
+            echo "::error::webapp/out não existe — verifique NEXT_OUTPUT_MODE=export e o script build."
+            exit 1
+          fi
+          echo "=== Conteúdo de webapp/out/ ==="
+          ls -lh webapp/out/ | head -20
+          du -sh webapp/out
+
+      - name: Configurar Pages
+        uses: actions/configure-pages@v5
+
+      - name: Publicar artefato estático
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: webapp/out
+
+      - name: Deploy no GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
+
+      - name: Resumo do deploy
+        if: always()
+        run: |
+          {
+            echo "## Deploy GitHub Pages — $(date -u -d '3 hours ago' +%F) (BRT)"
+            echo "- URL: ${{ steps.deploy.outputs.page_url || 'n/a' }}"
+            echo "- basePath: ${{ steps.basepath.outputs.base_path || '(raiz)' }}"
+            echo "- NEXT_OUTPUT_MODE: export"
+            echo "- Supabase configurado: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL != '' && 'Sim' || 'Não (modo fixtures)' }}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
