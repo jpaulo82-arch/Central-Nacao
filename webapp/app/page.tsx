@@ -2,7 +2,6 @@ import { getHubData } from '@/lib/data';
 import { HubClient } from '@/components/central/hub-client';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 export default async function HomePage() {
   const hub = await getHubData();
