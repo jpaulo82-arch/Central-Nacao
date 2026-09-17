@@ -9,14 +9,16 @@ import { NewsCard, Match, SocialPost, Corte, Venue } from './types';
 const ago = (hours: number) => new Date(Date.now() - hours * 3600000).toISOString();
 const ahead = (hours: number) => new Date(Date.now() + hours * 3600000).toISOString();
 
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || '';
+
 export const IMG = {
-  hero: '/images/nacao/hero.jpg',
-  bandeira: '/images/nacao/bandeira.jpg',
-  camisa: '/images/nacao/camisa.jpg',
-  gol: '/images/nacao/gol.jpg',
-  acao: '/images/nacao/acao.jpg',
-  mosaico: '/images/nacao/mosaico.jpg',
-  rua: '/images/nacao/rua.jpg',
+  hero: `${BASE_PATH}/images/nacao/hero.jpg`,
+  bandeira: `${BASE_PATH}/images/nacao/bandeira.jpg`,
+  camisa: `${BASE_PATH}/images/nacao/camisa.jpg`,
+  gol: `${BASE_PATH}/images/nacao/gol.jpg`,
+  acao: `${BASE_PATH}/images/nacao/acao.jpg`,
+  mosaico: `${BASE_PATH}/images/nacao/mosaico.jpg`,
+  rua: `${BASE_PATH}/images/nacao/rua.jpg`,
 };
 
 export const FONTES = {
