@@ -13,3 +13,6 @@ webapp/.build/
 # Python
 __pycache__/
 *.pyc
+
+# Pasta de downloads/outputs do Claude Desktop (nao faz parte do projeto)
+Claude outputs/
