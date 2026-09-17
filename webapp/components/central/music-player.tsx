@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Volume2, VolumeX, Music2 } from 'lucide-react';
 
-const AUDIO_SRC = '/audio/canto-da-nacao.mp3';
+const AUDIO_SRC = `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/audio/canto-da-nacao.mp3`;
 const STORAGE_KEY = 'cdn-canto-ativo';
 
 /**
