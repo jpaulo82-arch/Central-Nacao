@@ -12,10 +12,11 @@ export const supabase: SupabaseClient | null =
   url && key
     ? createClient(url, key, {
         auth: { persistSession: false, autoRefreshToken: false },
-        global: {
-          // Sempre buscar dados frescos — nunca servir resposta em cache
-          fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }),
-        },
+        // Sem override de fetch: no build estático (output: 'export'), um fetch com
+        // cache: 'no-store' faz o Next marcar a rota como dinâmica (`dynamic = "error"`)
+        // e o build falha silenciosamente, caindo nas fixtures de demonstração.
+        // Como o site é reconstruído diariamente pelo workflow, cada build já é a
+        // "atualização" — não precisamos forçar no-store dentro dele.
       })
     : null;
 
