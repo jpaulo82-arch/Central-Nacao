@@ -12,6 +12,7 @@ export interface NewsCard {
   imagem_url: string | null;
   timestamp: string; // ISO
   destaque: boolean;
+  categoria?: string;
 }
 
 export interface Match {
@@ -24,6 +25,18 @@ export interface Match {
   status: 'agendado' | 'ao_vivo' | 'intervalo' | 'encerrado';
   placar_mandante: number | null;
   placar_visitante: number | null;
+  transmissao?: string[];
+}
+
+export interface Classificacao {
+  posicao: number;
+  pontos: number;
+  jogos: number;
+  vitorias: number;
+  empates: number;
+  derrotas: number;
+  saldo_gols: number;
+  data_ref: string;
 }
 
 export interface SocialPost {
@@ -47,6 +60,8 @@ export interface Corte {
   autor: string;
   curtidas: number;
   timestamp: string;
+  url_origem?: string;
+  visualizacoes?: string;
 }
 
 export interface Venue {
@@ -57,4 +72,5 @@ export interface Venue {
   endereco: string;
   bairro: string;
   descricao: string;
+  tem_telao?: boolean;
 }

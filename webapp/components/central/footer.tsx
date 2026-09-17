@@ -14,9 +14,10 @@ export function Footer() {
           Central da Nação — Veículo independente. Não somos o Flamengo.
           Conteúdo curado pela comunidade rubro-negra.
         </p>
-        <p className="text-xs text-muted-foreground/60">
-          © 2026 Central da Nação
+        <p className="text-xs text-muted-foreground/60 max-w-md">
+          Imagens e áudio usados em caráter ilustrativo no projeto-piloto. Anúncios exibidos são simulações.
         </p>
+        <p className="text-xs text-muted-foreground/60">© 2026 Central da Nação</p>
       </div>
     </footer>
   );

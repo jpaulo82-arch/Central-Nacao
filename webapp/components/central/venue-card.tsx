@@ -1,4 +1,4 @@
-import { MapPin, Beer, ShoppingBag, Flag } from 'lucide-react';
+import { MapPin, Beer, ShoppingBag, Flag, Tv } from 'lucide-react';
 import type { Venue } from '@/lib/types';
 
 const TIPO_ICONS: Record<string, any> = {
@@ -27,10 +27,15 @@ export function VenueCard({ venue }: { venue: Venue }) {
             <span className="shrink-0 rounded-sm bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-secondary-foreground uppercase">
               {TIPO_LABELS[venue?.tipo ?? ''] ?? venue?.tipo}
             </span>
+            {venue?.tem_telao && (
+              <span className="shrink-0 flex items-center gap-1 rounded-sm bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary uppercase">
+                <Tv className="h-3 w-3" /> Telão
+              </span>
+            )}
           </div>
           <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
             <MapPin className="h-3 w-3 shrink-0" />
-            {venue?.endereco ?? ''} — {venue?.bairro ?? ''}
+            {[venue?.endereco, venue?.bairro].filter(Boolean).join(' — ')}
           </p>
           <p className="text-xs text-foreground/80 leading-relaxed">{venue?.descricao ?? ''}</p>
         </div>

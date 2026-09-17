@@ -1,6 +1,7 @@
 'use client';
 
-import { AlertCircle } from 'lucide-react';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { HeroBanner } from './hero-banner';
 import { Header } from './header';
 import { Footer } from './footer';
@@ -9,75 +10,129 @@ import { NacaoSection } from './nacao-section';
 import { CortesSection } from './cortes-section';
 import { PertoSection } from './perto-section';
 import { AdPlaceholder } from './ad-placeholder';
-import type { NewsCard, Match, Corte, Venue } from '@/lib/types';
+import { StatusBar } from './status-bar';
+import { GaleriaNacao } from './galeria-nacao';
+import { MusicPlayer } from './music-player';
+import type { NewsCard, Match, SocialPost, Corte, Venue, Classificacao } from '@/lib/types';
+
+const REFRESH_MS = 5 * 60 * 1000; // atualiza os dados a cada 5 minutos
 
 interface HubClientProps {
   news: NewsCard[];
   matches: Match[];
-  nacaoMatches: Match[];
-  nacaoClassificacao: string | null;
+  social: SocialPost[];
   cortes: Corte[];
   venues: Venue[];
-  errors: string[];
+  classificacao: Classificacao | null;
+  newsDemo: boolean;
+  matchesDemo: boolean;
+  socialDemo: boolean;
+  cortesDemo: boolean;
+  venuesDemo: boolean;
+  erros: Partial<Record<'news' | 'matches' | 'social' | 'cortes' | 'venues', string | undefined>>;
+  payloadGeneratedAt: string | null;
+  supabaseConfigured: boolean;
+  renderedAt: string;
 }
 
 export function HubClient({
   news,
   matches,
-  nacaoMatches,
-  nacaoClassificacao,
+  social,
   cortes,
   venues,
-  errors,
+  classificacao,
+  newsDemo,
+  matchesDemo,
+  socialDemo,
+  cortesDemo,
+  venuesDemo,
+  erros,
+  payloadGeneratedAt,
+  supabaseConfigured,
+  renderedAt,
 }: HubClientProps) {
+  const router = useRouter();
+
+  // Auto-refresh: busca dados novos no servidor sem recarregar a página inteira
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        router.refresh();
+      }
+    }, REFRESH_MS);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') router.refresh();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [router]);
+
+  const ultimaNoticia = (news ?? []).reduce<string | null>((acc, n) => {
+    if (!n?.timestamp) return acc;
+    return !acc || n.timestamp > acc ? n.timestamp : acc;
+  }, null);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header />
       <HeroBanner />
 
-      {(errors ?? []).length > 0 && (
-        <div className="mx-auto mt-4 max-w-[1200px] px-4">
-          <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-xs text-yellow-200">
-            <div className="flex items-start gap-2">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <p>Algumas seções podem estar vazias agora: {(errors ?? []).join(' ')}</p>
-            </div>
-          </div>
-        </div>
-      )}
+      <StatusBar
+        supabaseConfigured={supabaseConfigured}
+        renderedAt={renderedAt}
+        payloadGeneratedAt={payloadGeneratedAt}
+        ultimaNoticia={ultimaNoticia}
+        onRefresh={() => router.refresh()}
+      />
 
+      {/* Leaderboard Ad */}
       <div className="mx-auto max-w-[1200px] px-4 pt-6">
-        <AdPlaceholder format="leaderboard" />
+        <AdPlaceholder format="leaderboard" creative="bar" />
       </div>
 
       <div className="mx-auto max-w-[1200px] px-4">
         <div className="flex gap-8">
+          {/* Main content */}
           <main className="flex-1 min-w-0">
-            <AgoraSection news={news ?? []} matches={matches ?? []} />
+            <AgoraSection
+              news={news ?? []}
+              matches={matches ?? []}
+              classificacao={classificacao}
+              isDemo={newsDemo || matchesDemo}
+              erro={erros?.news ?? erros?.matches}
+            />
 
-            <AdPlaceholder format="retangulo" className="my-4" />
+            <AdPlaceholder format="retangulo" creative="manto" className="my-4" />
 
-            <NacaoSection matches={nacaoMatches ?? []} classificacaoLabel={nacaoClassificacao} />
+            <GaleriaNacao />
 
-            <AdPlaceholder format="retangulo" className="my-4" />
+            <NacaoSection posts={social ?? []} isDemo={socialDemo} erro={erros?.social} />
 
-            <CortesSection cortes={cortes ?? []} />
+            <AdPlaceholder format="retangulo" creative="delivery" className="my-4" />
 
-            <AdPlaceholder format="retangulo" className="my-4" />
+            <CortesSection cortes={cortes ?? []} isDemo={cortesDemo} erro={erros?.cortes} />
 
-            <PertoSection venues={venues ?? []} />
+            <AdPlaceholder format="retangulo" creative="bar" className="my-4" />
+
+            <PertoSection venues={venues ?? []} isDemo={venuesDemo} erro={erros?.venues} />
           </main>
 
+          {/* Desktop sidebar ads */}
           <aside className="hidden lg:block w-[300px] shrink-0 pt-8 space-y-6">
             <div className="sticky top-20 space-y-6">
-              <AdPlaceholder format="sidebar" />
-              <AdPlaceholder format="retangulo" />
+              <AdPlaceholder format="sidebar" creative="seguros" />
+              <AdPlaceholder format="retangulo" creative="delivery" />
             </div>
           </aside>
         </div>
       </div>
 
       <Footer />
+      <MusicPlayer />
     </div>
   );
 }

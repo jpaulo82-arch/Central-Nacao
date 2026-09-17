@@ -5,8 +5,13 @@ import { ExternalLink, Clock } from 'lucide-react';
 import type { NewsCard as NewsCardType } from '@/lib/types';
 import { getSeloLabel, getSeloClass, formatRelativeTime } from '@/lib/utils';
 
+function isValidUrl(u?: string | null): u is string {
+  return !!u && /^https?:\/\//i.test(u);
+}
+
 export function NewsCardItem({ card }: { card: NewsCardType }) {
   const selo = card?.tipo ?? 'ugc';
+  const hasLink = isValidUrl(card?.url_origem);
   return (
     <article className="group relative flex flex-col overflow-hidden rounded-lg bg-card border border-border/40 transition-all hover:border-primary/30 hover:shadow-lg">
       {card?.imagem_url && (
@@ -21,29 +26,44 @@ export function NewsCardItem({ card }: { card: NewsCardType }) {
         </div>
       )}
       <div className="flex flex-1 flex-col gap-2 p-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className={`${getSeloClass(selo)} inline-block rounded-sm px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider`}>
             {getSeloLabel(selo)}
           </span>
-          <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+          {card?.categoria && (
+            <span className="inline-block rounded-sm bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
+              {card.categoria}
+            </span>
+          )}
+          <span className="flex items-center gap-1 text-[11px] text-muted-foreground" suppressHydrationWarning>
             <Clock className="h-3 w-3" />
             {formatRelativeTime(card?.timestamp ?? '')}
           </span>
         </div>
         <h3 className="font-display text-sm font-semibold leading-snug tracking-tight text-foreground line-clamp-2">
-          {card?.titulo ?? ''}
+          {hasLink ? (
+            <a href={card.url_origem} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
+              {card?.titulo ?? ''}
+            </a>
+          ) : (
+            card?.titulo ?? ''
+          )}
         </h3>
         <p className="text-xs text-muted-foreground line-clamp-2">{card?.resumo ?? ''}</p>
         <div className="mt-auto flex items-center justify-between pt-2">
-          <span className="text-[11px] text-muted-foreground">{card?.fonte ?? ''}</span>
-          <a
-            href={card?.url_origem ?? '#'}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
-          >
-            Ler na origem <ExternalLink className="h-3 w-3" />
-          </a>
+          <span className="text-[11px] text-muted-foreground truncate">{card?.fonte ?? ''}</span>
+          {hasLink ? (
+            <a
+              href={card.url_origem}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex shrink-0 items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+            >
+              Ler na origem <ExternalLink className="h-3 w-3" />
+            </a>
+          ) : (
+            <span className="text-[11px] text-muted-foreground/60 shrink-0">Fonte sem link</span>
+          )}
         </div>
       </div>
     </article>

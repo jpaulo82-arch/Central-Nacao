@@ -5,11 +5,19 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatRelativeTime(isoDate: string): string {
+/**
+ * Tempo relativo em pt-BR curto ("agora", "12min", "3h", "2d").
+ * O segundo parâmetro é opcional e serve apenas para forçar re-render
+ * quando o chamador quer atualizar o valor periodicamente.
+ */
+export function formatRelativeTime(isoDate: string, _tick?: number): string {
   try {
+    if (!isoDate) return '';
     const now = Date.now();
     const then = new Date(isoDate).getTime();
+    if (Number.isNaN(then)) return '';
     const diff = now - then;
+    if (diff < 0) return 'agora';
     const mins = Math.floor(diff / 60000);
     if (mins < 1) return 'agora';
     if (mins < 60) return `${mins}min`;
@@ -17,6 +25,24 @@ export function formatRelativeTime(isoDate: string): string {
     if (hours < 24) return `${hours}h`;
     const days = Math.floor(hours / 24);
     return `${days}d`;
+  } catch {
+    return '';
+  }
+}
+
+/** Data/hora curta em pt-BR com fuso de Brasília (determinística no SSR). */
+export function formatDateTimeBR(isoDate: string): string {
+  try {
+    const d = new Date(isoDate);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      weekday: 'short',
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   } catch {
     return '';
   }
