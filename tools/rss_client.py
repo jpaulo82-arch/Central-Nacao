@@ -25,6 +25,26 @@ class RssClient:
                 time.sleep(5 - elapsed)
         self._domain_last_hit[domain] = time.time()
 
+    @staticmethod
+    def _extract_image(entry: Any) -> str:
+        """Extrai a imagem de capa do item RSS (media:thumbnail, media:content ou enclosure).
+        Nunca baixa nem re-hospeda a imagem — apenas referencia a URL original da fonte,
+        com atribuição via 'fonte'/'Ler na origem' já existente nos cards."""
+        try:
+            thumbs = entry.get("media_thumbnail") or []
+            if thumbs and thumbs[0].get("url"):
+                return thumbs[0]["url"]
+            media = entry.get("media_content") or []
+            for m in media:
+                if m.get("url") and (m.get("medium") == "image" or not m.get("medium")):
+                    return m["url"]
+            for link in entry.get("links", []) or []:
+                if link.get("rel") == "enclosure" and str(link.get("type", "")).startswith("image/"):
+                    return link.get("href", "")
+        except Exception:
+            pass
+        return ""
+
     def fetch_feed(self, feed_url: str, source_id: str, source_name: str) -> list[dict[str, Any]]:
         domain = feed_url.split("/")[2] if "://" in feed_url else feed_url
         self._respect_politeness(domain)
@@ -50,6 +70,7 @@ class RssClient:
                         published_at = dt.isoformat(timespec="seconds")
                     else:
                         published_at = iso_sp()
+                    image_url = self._extract_image(entry)
                     entries.append(
                         {
                             "source_id": source_id,
@@ -59,6 +80,7 @@ class RssClient:
                             "summary_raw": summary,
                             "published_at": published_at,
                             "fetched_at": iso_sp(),
+                            "image_url": image_url,
                         }
                     )
                 return entries

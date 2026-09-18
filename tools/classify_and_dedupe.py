@@ -38,6 +38,7 @@ def _classify_one(item: dict, llm_key: str) -> tuple[dict, bool]:
         "source_url": item.get("url", ""),
         "needs_review": needs_review,
         "duplicate_of": None,
+        "image_url": item.get("image_url") or None,
     }
     return card, needs_review
 
