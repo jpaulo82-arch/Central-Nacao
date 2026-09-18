@@ -329,6 +329,10 @@ jobs:
     name: Deploy GitHub Pages (payload publicado)
     needs: publish
     if: needs.publish.outputs.published == 'true'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     uses: ./.github/workflows/central-da-nacao-deploy-webapp.yml
 
   # --------------------------------------------------------------------------
