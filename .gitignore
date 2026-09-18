@@ -16,3 +16,7 @@ __pycache__/
 
 # Pasta de downloads/outputs do Claude Desktop (nao faz parte do projeto)
 Claude outputs/
+
+# Artefatos temporarios do pipeline (gerados a cada run, nunca versionar)
+tools/.tmp/
+tools/.env
