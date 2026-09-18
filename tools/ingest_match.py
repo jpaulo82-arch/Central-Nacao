@@ -21,22 +21,38 @@ def main() -> int:
     settings = get_settings()
     adapter = get_football_adapter(settings.api_futebol_key, fixture_path=args.fixture)
 
+    fallback_motivo: str | None = None
     try:
         result = adapter.get_next_match()
+    except Exception as exc:
+        # Provedor real configurado mas indisponivel/com erro (chave invalida, sem
+        # jogo para o time/temporada, timeout, etc.): nunca derruba o pipeline por
+        # causa disso -- cai para o fixture mock e segue (nunca sincronizado como
+        # real na nuvem, ver step seguinte no workflow).
+        if settings.api_futebol_key:
+            fallback_motivo = str(exc)
+            from football_adapter import MockFootballAdapter
+
+            result = MockFootballAdapter(fixture_path=args.fixture).get_next_match()
+        else:
+            raise
+
+    try:
         validate_with_schema(result.payload, "raw_match.schema.json")
         path = TMP_DIR / "matches" / f"{result.payload['match_id']}.json"
         write_json(path, result.payload)
-        print_report(
-            {
-                "tool": "ingest_match",
-                "ok": True,
-                "mock": result.mock,
-                "provider": result.provider,
-                "match_id": result.payload["match_id"],
-                "status": result.payload["status"],
-                "output": str(path),
-            }
-        )
+        report = {
+            "tool": "ingest_match",
+            "ok": True,
+            "mock": result.mock,
+            "provider": result.provider,
+            "match_id": result.payload["match_id"],
+            "status": result.payload["status"],
+            "output": str(path),
+        }
+        if fallback_motivo:
+            report["fallback_mock_motivo"] = fallback_motivo
+        print_report(report)
         return 0
     except SchemaError as exc:
         print_report({"tool": "ingest_match", "ok": False, "mock": not bool(settings.api_futebol_key), "motivo": f"Schema inválido: {exc}"})
