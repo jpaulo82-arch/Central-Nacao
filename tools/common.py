@@ -77,6 +77,7 @@ def ensure_tmp_dirs() -> None:
         "venues",
         "queue",
         "social",
+        "classificacao",
     ]:
         (TMP_DIR / name).mkdir(parents=True, exist_ok=True)
 

@@ -193,6 +193,8 @@ jobs:
         run: python3 tools/write_cards.py --date "$SP_DATE"
         env:
           SP_DATE: ${{ steps.date.outputs.sp_date }}
+      - name: ingest_classificacao (tabela do Brasileirão via Wikipedia, sem API paga)
+        run: python3 tools/ingest_classificacao.py
       - name: build_daily_payload (4 seções obrigatórias)
         run: python3 tools/build_daily_payload.py --date "$SP_DATE"
         env:

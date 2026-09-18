@@ -61,11 +61,13 @@ def main() -> int:
     match_file = Path(args.match_file) if args.match_file else next(iter((TMP_DIR / "matches").glob("*.json")), None)
     social_file = Path(args.social_file) if args.social_file else TMP_DIR / "social" / f"{date}.json"
     venues_file = Path(args.venues_file) if args.venues_file else TMP_DIR / "venues" / "venues_latest.json"
+    classificacao_file = TMP_DIR / "classificacao" / "latest.json"
 
     cards = _load_json_if_exists(cards_file, [])
     match = _load_json_if_exists(match_file, None) if match_file else None
     social_items = _load_json_if_exists(social_file, [])
     venues_all = _load_json_if_exists(venues_file, [])
+    classificacao = _load_json_if_exists(classificacao_file, None)
 
     mode = "matchday" if _is_matchday(match, ref_now) else "normal"
 
@@ -98,7 +100,7 @@ def main() -> int:
         "status": "draft",
         "mode": mode,
         "agora": {"match": match if mode == "matchday" else None, "headline": _build_headline(cards), "cards": cards_sorted},
-        "nacao": {"status": nacao_status, "items": nacao_items},
+        "nacao": {"status": nacao_status, "items": nacao_items, "classificacao": classificacao},
         "cortes": {"lances": lances, "memes": memes},
         "perto_de_voce": {"default_city": settings.default_city, "status": perto_status, "items": venues},
         "editor_notes": notes,
