@@ -35,6 +35,12 @@ function pickUltimoResultado(matches: Match[], proximo?: Match): Match | undefin
 export function AgoraSection({ news, matches, classificacao, isDemo, erro }: AgoraSectionProps) {
   const destaques = (news ?? []).filter((n: NewsCard) => n?.destaque);
   const restantes = (news ?? []).filter((n: NewsCard) => !n?.destaque);
+  // A manchete é a primeira notícia de destaque (ou, na falta dela, a mais recente);
+  // o resto entra na grade uniforme abaixo.
+  const manchete = destaques[0] ?? restantes[0];
+  const grade = (destaques.length > 0 ? [...destaques.slice(1), ...restantes] : restantes.slice(1)).filter(
+    (n) => n?.id !== manchete?.id,
+  );
   const proximoJogo = pickProximoJogo(matches);
   const ultimoResultado = pickUltimoResultado(matches, proximoJogo);
 
@@ -92,24 +98,18 @@ export function AgoraSection({ news, matches, classificacao, isDemo, erro }: Ago
           </div>
         )}
 
-        {/* Destaques */}
-        {(destaques?.length ?? 0) > 0 && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {destaques.map((card: NewsCard, idx: number) => (
-              <NewsCardItem key={card?.id ?? `dest-${idx}`} card={card} />
-            ))}
-          </div>
-        )}
+        {/* Manchete: a notícia de destaque em foto grande, no estilo dos grandes portais de clube */}
+        {manchete && <NewsCardItem card={manchete} variant="featured" />}
 
-        {/* Restantes */}
-        {(restantes?.length ?? 0) > 0 ? (
-          <div className="grid gap-3">
-            {restantes.map((card: NewsCard, idx: number) => (
-              <NewsCardItem key={card?.id ?? `rest-${idx}`} card={card} />
+        {/* Grade de notícias: 3 colunas uniformes, foto sempre 16:9 */}
+        {(grade?.length ?? 0) > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {grade.map((card: NewsCard, idx: number) => (
+              <NewsCardItem key={card?.id ?? `grade-${idx}`} card={card} />
             ))}
           </div>
         ) : (
-          (destaques?.length ?? 0) === 0 && (
+          !manchete && (
             <p className="py-6 text-center text-sm text-muted-foreground">
               Nenhuma notícia publicada ainda. A redação atualiza ao longo do dia.
             </p>
